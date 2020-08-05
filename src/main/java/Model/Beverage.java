@@ -15,4 +15,8 @@ public class Beverage {
   public Set<IngredientItem> getRequiredIngredients() {
     return requiredIngredients;
   }
+
+  public String getIdentifier() {
+    return identifier;
+  }
 }

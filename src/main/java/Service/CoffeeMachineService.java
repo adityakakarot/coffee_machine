@@ -15,40 +15,61 @@ import Model.Outlet;
 public class CoffeeMachineService {
   DataManagerService dataManagerService;
 
-  CoffeeMachineService(DataManagerService dataManagerService) {
+  public CoffeeMachineService(DataManagerService dataManagerService) {
     this.dataManagerService = dataManagerService;
   }
 
   public void defineCoffeeMachine(Integer outletCount, Map<String, Integer> ingredients) {
-    CoffeeMachine coffeeMachine = new CoffeeMachine(Stream.iterate(0, i -> i + 1).limit(outletCount)
-        .map(i -> new Outlet()).collect(Collectors.toList()), ingredients.entrySet().stream().map(
-        ingredient -> new IngredientItem(new Ingredient(ingredient.getKey()),
-            ingredient.getValue())).collect(Collectors.toList()));
+    CoffeeMachine coffeeMachine = new CoffeeMachine(Stream.iterate(0, i -> i + 1)
+        .limit(outletCount)
+        .map(i -> new Outlet())
+        .collect(Collectors.toList()), ingredients.entrySet()
+        .stream()
+        .map(ingredient -> new IngredientItem(new Ingredient(ingredient.getKey()),
+            ingredient.getValue()))
+        .collect(Collectors.toList()));
 
     dataManagerService.setCoffeeMachine(coffeeMachine);
   }
 
-  synchronized public void createBeverage(Beverage beverage) throws InsufficientResourcesException {
-    Outlet freeOutlet = dataManagerService.getCoffeeMachine().getOutlets().stream().filter(
-        Outlet::getAvailable).findFirst().orElseThrow(
-        () -> new InsufficientResourcesException("No outlet available"));
+  synchronized public void prepareBeverage(Beverage beverage)
+      throws InsufficientResourcesException {
+    /* Get free outlet or else throw exception */
+    Outlet freeOutlet = dataManagerService.getCoffeeMachine()
+        .getOutlets()
+        .stream()
+        .filter(Outlet::getAvailable)
+        .findFirst()
+        .orElseThrow(() -> new InsufficientResourcesException("No outlet available"));
 
-    if (!beverage.getRequiredIngredients().stream().allMatch(
-        requiredIngredient -> dataManagerService.getCoffeeMachine().getIngredientsStock().stream()
-            .anyMatch(ingredientItem ->
-                ingredientItem.getIngredient().equals(requiredIngredient.getIngredient())
-                    && ingredientItem.getQuantity() >= requiredIngredient.getQuantity()))) {
+    /* Check if all ingredients are present in right quantity */
+    if (!beverage.getRequiredIngredients()
+        .stream()
+        .allMatch(requiredIngredient -> dataManagerService.getCoffeeMachine()
+            .getIngredientsStock()
+            .stream()
+            .anyMatch(ingredientItem -> ingredientItem.getIngredient()
+                .getIdentifier()
+                .equals(requiredIngredient.getIngredient()
+                    .getIdentifier())
+                && ingredientItem.getQuantity() >= requiredIngredient.getQuantity()))) {
       throw new InsufficientResourcesException(
-          "Not enough ingredients present in the machine to prepare beverage");
+          "Ingredients are not sufficient for " + beverage.getIdentifier());
     }
 
     freeOutlet.setAvailable(false);
-    beverage.getRequiredIngredients().forEach(
-        requiredIngredient -> dataManagerService.getCoffeeMachine().getIngredientsStock()
+    beverage.getRequiredIngredients()
+        .forEach(requiredIngredient -> dataManagerService.getCoffeeMachine()
+            .getIngredientsStock()
             .forEach(ingredientItem -> {
-              if (ingredientItem.getIngredient().equals(requiredIngredient.getIngredient()))
+              if (ingredientItem.getIngredient()
+                  .getIdentifier()
+                  .equals(requiredIngredient.getIngredient()
+                      .getIdentifier()))
                 ingredientItem.setQuantity(
                     ingredientItem.getQuantity() - requiredIngredient.getQuantity());
             }));
+
+    freeOutlet.setAvailable(true);
   }
 }
